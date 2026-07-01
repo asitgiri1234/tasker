@@ -1,0 +1,76 @@
+# Tasker — MERN Task Tracker
+
+A full-stack Task Tracker web application built with the **MERN** stack (MongoDB, Express, React, Node.js).
+
+## Features
+
+- ✅ Create, View, Update & Delete tasks (full CRUD)
+- ✅ REST API with proper HTTP verbs & status codes
+- ✅ MongoDB integration via Mongoose
+- ✅ Server-side & client-side form validation
+- ✅ Responsive UI (coming in Step 2)
+- ✅ Dynamic updates without page refresh (coming in Step 2)
+- ✅ Public deployment (coming in Step 4)
+
+## Tech Stack
+
+| Layer     | Technology              |
+|-----------|-------------------------|
+| Frontend  | React.js                |
+| Backend   | Node.js + Express.js    |
+| Database  | MongoDB (Mongoose ODM)  |
+
+## Project Structure
+
+```
+tasker/
+├── backend/            # Express REST API + MongoDB
+│   ├── config/         # Database connection
+│   ├── models/         # Mongoose schemas
+│   ├── controllers/    # Route handlers / business logic
+│   ├── routes/         # API route definitions
+│   ├── server.js       # App entry point
+│   └── .env.example    # Environment variable template
+└── frontend/           # React app (Step 2)
+```
+
+## Build Roadmap
+
+- [x] **Step 1** — Project scaffolding + backend REST API + MongoDB
+- [ ] **Step 2** — React frontend with dynamic updates
+- [ ] **Step 3** — Responsive UI + form validation polish
+- [ ] **Step 4** — Deploy frontend & backend to public URLs
+
+## Getting Started (Backend)
+
+```bash
+cd backend
+npm install
+cp .env.example .env      # then fill in your MongoDB URI
+npm run dev               # starts server with nodemon
+```
+
+Server runs on `http://localhost:5000` by default.
+
+## REST API Endpoints
+
+| Method | Endpoint          | Description             |
+|--------|-------------------|-------------------------|
+| GET    | `/api/tasks`      | List all tasks          |
+| GET    | `/api/tasks/:id`  | Get a single task       |
+| POST   | `/api/tasks`      | Create a new task       |
+| PUT    | `/api/tasks/:id`  | Update an existing task |
+| DELETE | `/api/tasks/:id`  | Delete a task           |
+
+### Task shape
+
+```json
+{
+  "title": "Finish assignment",
+  "description": "Complete the MERN task tracker",
+  "status": "pending",
+  "dueDate": "2026-07-15T00:00:00.000Z"
+}
+```
+
+`status` is one of: `pending`, `in-progress`, `completed`.

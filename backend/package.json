@@ -1,0 +1,29 @@
+{
+  "name": "tasker-backend",
+  "version": "1.0.0",
+  "description": "REST API for the Tasker MERN task tracker",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "mern",
+    "express",
+    "mongodb",
+    "rest-api",
+    "task-tracker"
+  ],
+  "author": "asitgiri1234",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.5.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}
