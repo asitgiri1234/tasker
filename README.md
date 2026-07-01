@@ -48,16 +48,15 @@ The UI is a bespoke design system, not a component-kit template:
 
 ```
 tasker/
+├── vercel.json         # Single-project deploy (static frontend + API function)
 ├── backend/            # Express REST API + MongoDB
-│   ├── api/index.js    # Vercel serverless entry (exports the app)
-│   ├── app.js          # Express app (routes/middleware, no listener)
-│   ├── config/         # Cached DB connection
+│   ├── app.js          # Express app (routes/middleware, exported; no listener)
+│   ├── config/         # Cached DB connection (serverless-safe)
 │   ├── models/         # Mongoose schemas (User, Task)
 │   ├── controllers/    # Route handlers / business logic
 │   ├── middleware/     # JWT auth guard
 │   ├── routes/         # API route definitions
 │   ├── server.js       # Local dev entry (app.listen)
-│   ├── vercel.json     # Rewrites all requests to the function
 │   └── .env.example    # Environment variable template
 └── frontend/           # React app (Vite)
     ├── src/
@@ -106,40 +105,34 @@ deployed backend URL (see `frontend/.env.example`).
 
 ## Deploying to Vercel
 
-Deploy the backend and frontend as **two separate Vercel projects** from this
-same repo. The backend runs as a serverless function (`backend/api/index.js`);
-the frontend is a static Vite build.
+The whole app deploys as **one Vercel project** from this repo. The root
+[`vercel.json`](vercel.json) builds the Vite frontend as static files and the
+Express app as a serverless function, then routes traffic:
 
-### 1. Backend project
+- `/api/*` → the Express serverless function (`backend/app.js`)
+- everything else → the static frontend (SPA fallback to `index.html`)
 
-- **New Project → import this repo → set _Root Directory_ to `backend`.**
-- Framework preset: **Other** (the included `vercel.json` handles routing —
-  every request is rewritten to the serverless function).
-- **Environment Variables:**
-  | Key | Value |
-  |-----|-------|
-  | `MONGO_URI` | your MongoDB Atlas connection string (with `/tasker` db) |
-  | `JWT_SECRET` | a long random string (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`) |
-  | `JWT_EXPIRES_IN` | `7d` |
-  | `CLIENT_ORIGIN` | your frontend URL, e.g. `https://tasker-frontend.vercel.app` (or `*`) |
-- Deploy, then note the URL, e.g. `https://tasker-backend.vercel.app`.
-  Visiting it should return `{"status":"ok","service":"tasker-api"}`.
-- In **MongoDB Atlas → Network Access**, allow access from anywhere
-  (`0.0.0.0/0`) so Vercel's functions can connect.
+Because both live on the same origin, the frontend just calls `/api/...` — no
+`VITE_API_URL` needed.
 
-### 2. Frontend project
+### Steps
 
-- **New Project → import the same repo → set _Root Directory_ to `frontend`.**
-- Framework preset: **Vite** (auto-detected).
-- **Environment Variable:**
-  | Key | Value |
-  |-----|-------|
-  | `VITE_API_URL` | your backend URL, e.g. `https://tasker-backend.vercel.app` (no trailing slash, no `/api`) |
-- Deploy. The app calls `<VITE_API_URL>/api/...`.
+1. **New Project → import this repo.** Leave the _Root Directory_ as the repo
+   root. The build settings come from `vercel.json`, so you can ignore the
+   framework preset.
+2. **Add environment variables** (Project → Settings → Environment Variables):
+   | Key | Value |
+   |-----|-------|
+   | `MONGO_URI` | your MongoDB Atlas connection string (ending in `/tasker`) |
+   | `JWT_SECRET` | a long random string — `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
+   | `JWT_EXPIRES_IN` | `7d` |
+3. In **MongoDB Atlas → Network Access**, allow `0.0.0.0/0` so Vercel's
+   functions can reach the database.
+4. **Deploy.** Your app is at `https://<project>.vercel.app`, and the API is at
+   `https://<project>.vercel.app/api/...` on the same domain.
 
-> After both are live, set the backend's `CLIENT_ORIGIN` to the frontend URL
-> and redeploy the backend to lock down CORS. Since Atlas holds the data, both
-> deployments are stateless and can be redeployed freely.
+> CORS isn't a concern here — the frontend and API share one origin. The auth
+> token travels over HTTPS, which Vercel provides automatically.
 
 ## REST API Endpoints
 

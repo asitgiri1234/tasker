@@ -1,5 +1,5 @@
-// Local development entry point. On Vercel the app is served as a serverless
-// function via api/index.js instead (see vercel.json) — this file is not used
+// Local development entry point. On Vercel the app (backend/app.js) is served
+// as a serverless function via the root vercel.json — this file is not used
 // there because serverless platforms don't keep a long-lived listener.
 const app = require("./app");
 const connectDB = require("./config/db");
