@@ -31,13 +31,19 @@ tasker/
 │   ├── routes/         # API route definitions
 │   ├── server.js       # App entry point
 │   └── .env.example    # Environment variable template
-└── frontend/           # React app (Step 2)
+└── frontend/           # React app (Vite)
+    ├── src/
+    │   ├── api/        # Axios API layer
+    │   ├── components/ # TaskForm, TaskList, TaskItem
+    │   ├── App.jsx     # State + CRUD orchestration
+    │   └── index.css   # Styles
+    └── vite.config.js  # Dev server + /api proxy
 ```
 
 ## Build Roadmap
 
 - [x] **Step 1** — Project scaffolding + backend REST API + MongoDB
-- [ ] **Step 2** — React frontend with dynamic updates
+- [x] **Step 2** — React frontend (Vite) with Axios API layer + dynamic updates
 - [ ] **Step 3** — Responsive UI + form validation polish
 - [ ] **Step 4** — Deploy frontend & backend to public URLs
 
@@ -51,6 +57,18 @@ npm run dev               # starts server with nodemon
 ```
 
 Server runs on `http://localhost:5000` by default.
+
+## Getting Started (Frontend)
+
+```bash
+cd frontend
+npm install
+npm run dev               # starts Vite dev server on http://localhost:5173
+```
+
+The Vite dev server proxies `/api` requests to the backend on port 5000, so
+run the backend alongside it. For production, set `VITE_API_URL` to the
+deployed backend URL (see `frontend/.env.example`).
 
 ## REST API Endpoints
 
