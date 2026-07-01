@@ -8,6 +8,10 @@ const {
   updateTask,
   deleteTask,
 } = require("../controllers/taskController");
+const auth = require("../middleware/auth");
+
+// Every task route requires a valid token; handlers use req.userId.
+router.use(auth);
 
 // /api/tasks
 router.route("/").get(getTasks).post(createTask);

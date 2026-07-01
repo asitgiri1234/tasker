@@ -4,13 +4,18 @@ const Task = require("../models/Task");
 /** Utility: guard against invalid ObjectId strings before querying. */
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 
+const validationErrors = (err) => ({
+  message: "Validation failed",
+  errors: Object.values(err.errors).map((e) => e.message),
+});
+
 /**
  * @route   GET /api/tasks
- * @desc    Get all tasks (newest first)
+ * @desc    Get the current user's tasks (newest first)
  */
 const getTasks = async (req, res, next) => {
   try {
-    const tasks = await Task.find().sort({ createdAt: -1 });
+    const tasks = await Task.find({ user: req.userId }).sort({ createdAt: -1 });
     res.status(200).json(tasks);
   } catch (err) {
     next(err);
@@ -19,7 +24,7 @@ const getTasks = async (req, res, next) => {
 
 /**
  * @route   GET /api/tasks/:id
- * @desc    Get a single task by id
+ * @desc    Get a single task owned by the current user
  */
 const getTaskById = async (req, res, next) => {
   try {
@@ -28,7 +33,7 @@ const getTaskById = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task id" });
     }
 
-    const task = await Task.findById(id);
+    const task = await Task.findOne({ _id: id, user: req.userId });
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }
@@ -41,21 +46,23 @@ const getTaskById = async (req, res, next) => {
 
 /**
  * @route   POST /api/tasks
- * @desc    Create a new task
+ * @desc    Create a task for the current user
  */
 const createTask = async (req, res, next) => {
   try {
     const { title, description, status, dueDate } = req.body;
 
-    const task = await Task.create({ title, description, status, dueDate });
+    const task = await Task.create({
+      title,
+      description,
+      status,
+      dueDate,
+      user: req.userId,
+    });
     res.status(201).json(task);
   } catch (err) {
-    // Surface Mongoose validation errors as 400s
     if (err.name === "ValidationError") {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: Object.values(err.errors).map((e) => e.message),
-      });
+      return res.status(400).json(validationErrors(err));
     }
     next(err);
   }
@@ -63,7 +70,7 @@ const createTask = async (req, res, next) => {
 
 /**
  * @route   PUT /api/tasks/:id
- * @desc    Update an existing task
+ * @desc    Update a task owned by the current user
  */
 const updateTask = async (req, res, next) => {
   try {
@@ -74,8 +81,8 @@ const updateTask = async (req, res, next) => {
 
     const { title, description, status, dueDate } = req.body;
 
-    const task = await Task.findByIdAndUpdate(
-      id,
+    const task = await Task.findOneAndUpdate(
+      { _id: id, user: req.userId },
       { title, description, status, dueDate },
       { new: true, runValidators: true }
     );
@@ -87,10 +94,7 @@ const updateTask = async (req, res, next) => {
     res.status(200).json(task);
   } catch (err) {
     if (err.name === "ValidationError") {
-      return res.status(400).json({
-        message: "Validation failed",
-        errors: Object.values(err.errors).map((e) => e.message),
-      });
+      return res.status(400).json(validationErrors(err));
     }
     next(err);
   }
@@ -98,7 +102,7 @@ const updateTask = async (req, res, next) => {
 
 /**
  * @route   DELETE /api/tasks/:id
- * @desc    Delete a task
+ * @desc    Delete a task owned by the current user
  */
 const deleteTask = async (req, res, next) => {
   try {
@@ -107,7 +111,7 @@ const deleteTask = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid task id" });
     }
 
-    const task = await Task.findByIdAndDelete(id);
+    const task = await Task.findOneAndDelete({ _id: id, user: req.userId });
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
     }

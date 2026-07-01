@@ -1,12 +1,18 @@
 /**
- * Seed script — populates the database with a few sample tasks.
+ * Seed script — creates a demo user and a few sample tasks owned by them.
  * Usage: npm run seed   (from the backend/ directory)
  *
- * WARNING: this clears the existing Task collection first.
+ * Demo login:  demo@tasker.app  /  demo1234
+ *
+ * WARNING: this removes the demo user and their tasks first (other users
+ * and their data are left untouched).
  */
 require("dotenv").config();
 const mongoose = require("mongoose");
+const User = require("./models/User");
 const Task = require("./models/Task");
+
+const DEMO = { name: "Demo User", email: "demo@tasker.app", password: "demo1234" };
 
 const samples = [
   {
@@ -38,10 +44,15 @@ const samples = [
     await mongoose.connect(process.env.MONGO_URI);
     console.log(`✓ Connected to ${mongoose.connection.name}`);
 
-    await Task.deleteMany({});
-    console.log("✓ Cleared existing tasks");
+    // Reset only the demo account's data.
+    let user = await User.findOne({ email: DEMO.email });
+    if (user) await Task.deleteMany({ user: user._id });
+    else user = await User.create(DEMO);
+    console.log(`✓ Demo user ready: ${DEMO.email} / ${DEMO.password}`);
 
-    const created = await Task.insertMany(samples);
+    const created = await Task.insertMany(
+      samples.map((t) => ({ ...t, user: user._id }))
+    );
     console.log(`✓ Inserted ${created.length} sample tasks`);
 
     await mongoose.disconnect();

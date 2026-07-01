@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 
 const connectDB = require("./config/db");
+const authRoutes = require("./routes/authRoutes");
 const taskRoutes = require("./routes/taskRoutes");
 
 const app = express();
@@ -18,6 +19,7 @@ app.get("/", (req, res) => {
 });
 
 // ---- Routes ----
+app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 
 // ---- 404 handler ----

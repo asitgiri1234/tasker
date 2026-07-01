@@ -4,6 +4,8 @@ A full-stack Task Tracker web application built with the **MERN** stack (MongoDB
 
 ## Features
 
+- ✅ User accounts — register / login with JWT auth (bcrypt-hashed passwords)
+- ✅ Per-user tasks — every task is scoped to its owner
 - ✅ Create, View, Update & Delete tasks (full CRUD)
 - ✅ REST API with proper HTTP verbs & status codes
 - ✅ MongoDB integration via Mongoose
@@ -11,6 +13,10 @@ A full-stack Task Tracker web application built with the **MERN** stack (MongoDB
 - ✅ Responsive UI, custom-designed (light + dark)
 - ✅ Dynamic updates without page refresh
 - ✅ Public deployment (coming in Step 4)
+
+> **Auth note:** there's no email verification or password reset (by design for
+> this build) — accounts are email + password only. A seeded demo login is
+> available: **`demo@tasker.app` / `demo1234`** (run `npm run seed`).
 
 ## Design — "Ink & Ember"
 
@@ -96,13 +102,26 @@ deployed backend URL (see `frontend/.env.example`).
 
 ## REST API Endpoints
 
-| Method | Endpoint          | Description             |
-|--------|-------------------|-------------------------|
-| GET    | `/api/tasks`      | List all tasks          |
-| GET    | `/api/tasks/:id`  | Get a single task       |
-| POST   | `/api/tasks`      | Create a new task       |
-| PUT    | `/api/tasks/:id`  | Update an existing task |
-| DELETE | `/api/tasks/:id`  | Delete a task           |
+### Auth (public)
+
+| Method | Endpoint              | Description                      |
+|--------|-----------------------|----------------------------------|
+| POST   | `/api/auth/register`  | Create an account → `{token,user}` |
+| POST   | `/api/auth/login`     | Log in → `{token,user}`          |
+| GET    | `/api/auth/me`        | Current user (requires token)    |
+
+### Tasks (require `Authorization: Bearer <token>`)
+
+| Method | Endpoint          | Description                       |
+|--------|-------------------|-----------------------------------|
+| GET    | `/api/tasks`      | List the current user's tasks     |
+| GET    | `/api/tasks/:id`  | Get one of the user's tasks       |
+| POST   | `/api/tasks`      | Create a task (owned by the user) |
+| PUT    | `/api/tasks/:id`  | Update the user's task            |
+| DELETE | `/api/tasks/:id`  | Delete the user's task            |
+
+Task routes are protected: requests without a valid token get `401`, and every
+query is scoped to the authenticated user so tasks never leak between accounts.
 
 ### Task shape
 
