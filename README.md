@@ -50,8 +50,7 @@ The UI is a bespoke design system, not a component-kit template:
 tasker/
 ├── vercel.json         # Multi-service deploy (frontend + backend services)
 ├── backend/            # Express REST API + MongoDB
-│   ├── api/[...slug].js # Vercel serverless catch-all (mounts app.js)
-│   ├── app.js          # Express app (routes/middleware, exported; no listener)
+│   ├── app.js          # Express app (exported; the backend service entrypoint)
 │   ├── config/         # Cached DB connection (serverless-safe)
 │   ├── models/         # Mongoose schemas (User, Task)
 │   ├── controllers/    # Route handlers / business logic
@@ -111,8 +110,8 @@ monorepo support. The root [`vercel.json`](vercel.json) declares two services
 and routes between them:
 
 - **`frontend`** (`root: frontend`, framework `vite`) — the static React app
-- **`backend`** (`root: backend`) — the Express API, served by the catch-all
-  serverless function `backend/api/[...slug].js` (which mounts `app.js`)
+- **`backend`** (`root: backend`, entrypoint `app.js`) — the Express API run as
+  a Node serverless function
 - Rewrites: `/api/*` → the `backend` service, everything else → `frontend`
 
 Both services share one origin, so the frontend just calls `/api/...` — no
