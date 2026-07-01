@@ -44,7 +44,7 @@ tasker/
 
 - [x] **Step 1** — Project scaffolding + backend REST API + MongoDB
 - [x] **Step 2** — React frontend (Vite) with Axios API layer + dynamic updates
-- [ ] **Step 3** — Responsive UI + form validation polish
+- [x] **Step 3** — Responsive UI + form validation polish (filters, search, counters)
 - [ ] **Step 4** — Deploy frontend & backend to public URLs
 
 ## Getting Started (Backend)
@@ -57,6 +57,12 @@ npm run dev               # starts server with nodemon
 ```
 
 Server runs on `http://localhost:5000` by default.
+
+Optionally seed sample data (clears the collection first):
+
+```bash
+npm run seed
+```
 
 ## Getting Started (Frontend)
 

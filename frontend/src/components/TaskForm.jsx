@@ -72,9 +72,17 @@ export default function TaskForm({ editingTask, onSubmit, onCancel, submitting }
           value={form.title}
           onChange={handleChange}
           placeholder="e.g. Finish the assignment"
+          maxLength={120}
           aria-invalid={!!errors.title}
         />
-        {errors.title && <span className="error-text">{errors.title}</span>}
+        <div className="field-meta">
+          {errors.title ? (
+            <span className="error-text">{errors.title}</span>
+          ) : (
+            <span />
+          )}
+          <span className="counter">{form.title.length}/120</span>
+        </div>
       </div>
 
       <div className="field">
@@ -86,11 +94,17 @@ export default function TaskForm({ editingTask, onSubmit, onCancel, submitting }
           value={form.description}
           onChange={handleChange}
           placeholder="Optional details…"
+          maxLength={1000}
           aria-invalid={!!errors.description}
         />
-        {errors.description && (
-          <span className="error-text">{errors.description}</span>
-        )}
+        <div className="field-meta">
+          {errors.description ? (
+            <span className="error-text">{errors.description}</span>
+          ) : (
+            <span />
+          )}
+          <span className="counter">{form.description.length}/1000</span>
+        </div>
       </div>
 
       <div className="field-row">

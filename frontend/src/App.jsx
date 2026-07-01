@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import TaskForm from "./components/TaskForm";
+import TaskFilters from "./components/TaskFilters";
 import TaskList from "./components/TaskList";
 import {
   getTasks,
@@ -17,6 +18,8 @@ export default function App() {
   const [busyId, setBusyId] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [error, setError] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
 
   // Initial load.
   useEffect(() => {
@@ -96,6 +99,30 @@ export default function App() {
 
   const remaining = tasks.filter((t) => t.status !== "completed").length;
 
+  // Counts per status tab (used by the filter bar).
+  const counts = useMemo(
+    () => ({
+      all: tasks.length,
+      pending: tasks.filter((t) => t.status === "pending").length,
+      "in-progress": tasks.filter((t) => t.status === "in-progress").length,
+      completed: tasks.filter((t) => t.status === "completed").length,
+    }),
+    [tasks]
+  );
+
+  // Apply status filter + text search without mutating the source list.
+  const visibleTasks = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return tasks.filter((t) => {
+      const matchesStatus = filter === "all" || t.status === filter;
+      const matchesSearch =
+        !q ||
+        t.title.toLowerCase().includes(q) ||
+        (t.description || "").toLowerCase().includes(q);
+      return matchesStatus && matchesSearch;
+    });
+  }, [tasks, filter, search]);
+
   return (
     <div className="app">
       <header className="app-header">
@@ -122,9 +149,20 @@ export default function App() {
           </div>
         )}
 
+        {!loading && tasks.length > 0 && (
+          <TaskFilters
+            filter={filter}
+            onFilterChange={setFilter}
+            search={search}
+            onSearchChange={setSearch}
+            counts={counts}
+          />
+        )}
+
         <TaskList
-          tasks={tasks}
+          tasks={visibleTasks}
           loading={loading}
+          isFiltered={filter !== "all" || search.trim() !== ""}
           onEdit={handleEdit}
           onDelete={handleDelete}
           onCycleStatus={handleCycleStatus}

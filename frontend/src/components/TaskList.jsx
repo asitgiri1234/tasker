@@ -4,6 +4,7 @@ import TaskItem from "./TaskItem";
 export default function TaskList({
   tasks,
   loading,
+  isFiltered,
   onEdit,
   onDelete,
   onCycleStatus,
@@ -16,8 +17,17 @@ export default function TaskList({
   if (tasks.length === 0) {
     return (
       <div className="empty-state">
-        <p>No tasks yet.</p>
-        <p className="muted">Add your first task using the form above.</p>
+        {isFiltered ? (
+          <>
+            <p>No matching tasks.</p>
+            <p className="muted">Try a different search or filter.</p>
+          </>
+        ) : (
+          <>
+            <p>No tasks yet.</p>
+            <p className="muted">Add your first task using the form above.</p>
+          </>
+        )}
       </div>
     );
   }
