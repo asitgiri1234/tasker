@@ -49,11 +49,15 @@ The UI is a bespoke design system, not a component-kit template:
 ```
 tasker/
 ├── backend/            # Express REST API + MongoDB
-│   ├── config/         # Database connection
-│   ├── models/         # Mongoose schemas
+│   ├── api/index.js    # Vercel serverless entry (exports the app)
+│   ├── app.js          # Express app (routes/middleware, no listener)
+│   ├── config/         # Cached DB connection
+│   ├── models/         # Mongoose schemas (User, Task)
 │   ├── controllers/    # Route handlers / business logic
+│   ├── middleware/     # JWT auth guard
 │   ├── routes/         # API route definitions
-│   ├── server.js       # App entry point
+│   ├── server.js       # Local dev entry (app.listen)
+│   ├── vercel.json     # Rewrites all requests to the function
 │   └── .env.example    # Environment variable template
 └── frontend/           # React app (Vite)
     ├── src/
@@ -69,7 +73,7 @@ tasker/
 - [x] **Step 1** — Project scaffolding + backend REST API + MongoDB
 - [x] **Step 2** — React frontend (Vite) with Axios API layer + dynamic updates
 - [x] **Step 3** — Responsive UI + form validation polish (filters, search, counters)
-- [ ] **Step 4** — Deploy frontend & backend to public URLs
+- [x] **Step 4** — Vercel-ready (serverless backend + static frontend)
 
 ## Getting Started (Backend)
 
@@ -99,6 +103,43 @@ npm run dev               # starts Vite dev server on http://localhost:5173
 The Vite dev server proxies `/api` requests to the backend on port 5000, so
 run the backend alongside it. For production, set `VITE_API_URL` to the
 deployed backend URL (see `frontend/.env.example`).
+
+## Deploying to Vercel
+
+Deploy the backend and frontend as **two separate Vercel projects** from this
+same repo. The backend runs as a serverless function (`backend/api/index.js`);
+the frontend is a static Vite build.
+
+### 1. Backend project
+
+- **New Project → import this repo → set _Root Directory_ to `backend`.**
+- Framework preset: **Other** (the included `vercel.json` handles routing —
+  every request is rewritten to the serverless function).
+- **Environment Variables:**
+  | Key | Value |
+  |-----|-------|
+  | `MONGO_URI` | your MongoDB Atlas connection string (with `/tasker` db) |
+  | `JWT_SECRET` | a long random string (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`) |
+  | `JWT_EXPIRES_IN` | `7d` |
+  | `CLIENT_ORIGIN` | your frontend URL, e.g. `https://tasker-frontend.vercel.app` (or `*`) |
+- Deploy, then note the URL, e.g. `https://tasker-backend.vercel.app`.
+  Visiting it should return `{"status":"ok","service":"tasker-api"}`.
+- In **MongoDB Atlas → Network Access**, allow access from anywhere
+  (`0.0.0.0/0`) so Vercel's functions can connect.
+
+### 2. Frontend project
+
+- **New Project → import the same repo → set _Root Directory_ to `frontend`.**
+- Framework preset: **Vite** (auto-detected).
+- **Environment Variable:**
+  | Key | Value |
+  |-----|-------|
+  | `VITE_API_URL` | your backend URL, e.g. `https://tasker-backend.vercel.app` (no trailing slash, no `/api`) |
+- Deploy. The app calls `<VITE_API_URL>/api/...`.
+
+> After both are live, set the backend's `CLIENT_ORIGIN` to the frontend URL
+> and redeploy the backend to lock down CORS. Since Atlas holds the data, both
+> deployments are stateless and can be redeployed freely.
 
 ## REST API Endpoints
 

@@ -1,24 +1,40 @@
 const mongoose = require("mongoose");
 
 /**
- * Establishes a connection to MongoDB using the MONGO_URI env variable.
- * Exits the process on failure so the app doesn't run in a broken state.
+ * Cached MongoDB connection.
+ *
+ * On serverless (Vercel) the module can be re-imported across warm invocations,
+ * so we memoise the connection promise on `global` to avoid opening a new
+ * connection per request. Idempotent: repeated calls resolve to the same conn.
  */
-const connectDB = async () => {
-  const uri = process.env.MONGO_URI;
+let cached = global._taskerMongoose;
+if (!cached) {
+  cached = global._taskerMongoose = { conn: null, promise: null };
+}
 
-  if (!uri) {
-    console.error("✗ MONGO_URI is not defined. Set it in your .env file.");
-    process.exit(1);
+const connectDB = async () => {
+  if (cached.conn) return cached.conn;
+
+  if (!cached.promise) {
+    const uri = process.env.MONGO_URI;
+    if (!uri) {
+      throw new Error("MONGO_URI is not defined. Set it in your environment.");
+    }
+    cached.promise = mongoose
+      .connect(uri, { bufferCommands: false })
+      .then((m) => {
+        console.log(`✓ MongoDB connected: ${m.connection.host}`);
+        return m;
+      });
   }
 
   try {
-    const conn = await mongoose.connect(uri);
-    console.log(`✓ MongoDB connected: ${conn.connection.host}`);
+    cached.conn = await cached.promise;
   } catch (err) {
-    console.error(`✗ MongoDB connection error: ${err.message}`);
-    process.exit(1);
+    cached.promise = null; // allow a retry on the next request
+    throw err;
   }
+  return cached.conn;
 };
 
 module.exports = connectDB;
