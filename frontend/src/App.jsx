@@ -1,18 +1,34 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import TaskForm from "./components/TaskForm";
 import TaskFilters from "./components/TaskFilters";
 import TaskList from "./components/TaskList";
-import {
-  getTasks,
-  createTask,
-  updateTask,
-  deleteTask,
-} from "./api/tasks";
+import ThemeToggle from "./components/ThemeToggle";
+import { ErrorNotice } from "./components/States";
+import useTheme from "./hooks/useTheme";
+import { getTasks, createTask, updateTask, deleteTask } from "./api/tasks";
 
-const STATUS_CYCLE = ["pending", "in-progress", "completed"];
+const ORDER_KEY = "tasker-order";
+
+const loadOrder = () => {
+  try {
+    return JSON.parse(localStorage.getItem(ORDER_KEY)) || [];
+  } catch {
+    return [];
+  }
+};
+const saveOrder = (ids) => {
+  try {
+    localStorage.setItem(ORDER_KEY, JSON.stringify(ids));
+  } catch {
+    /* ignore */
+  }
+};
 
 export default function App() {
+  const { theme, toggle } = useTheme();
+
   const [tasks, setTasks] = useState([]);
+  const [order, setOrder] = useState(loadOrder); // array of task ids, user-defined
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState(null);
@@ -20,11 +36,18 @@ export default function App() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [enteringId, setEnteringId] = useState(null);
+  const [leavingId, setLeavingId] = useState(null);
+  const fileTimers = useRef({});
 
-  // Initial load.
   useEffect(() => {
     loadTasks();
+    return () => Object.values(fileTimers.current).forEach(clearTimeout);
   }, []);
+
+  useEffect(() => {
+    saveOrder(order);
+  }, [order]);
 
   const loadTasks = async () => {
     setLoading(true);
@@ -32,6 +55,14 @@ export default function App() {
     try {
       const data = await getTasks();
       setTasks(data);
+      // Reconcile persisted order with what the server returned: keep the
+      // saved order for tasks that still exist, and surface any new ones on top.
+      setOrder((prev) => {
+        const ids = data.map((t) => t._id);
+        const known = prev.filter((id) => ids.includes(id));
+        const fresh = ids.filter((id) => !prev.includes(id));
+        return [...fresh, ...known];
+      });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -39,67 +70,18 @@ export default function App() {
     }
   };
 
-  // Create or update depending on whether we're editing. State updates in
-  // place so the UI reflects changes without a page refresh.
-  const handleSubmit = async (payload) => {
-    setSubmitting(true);
-    setError("");
-    try {
-      if (editingTask) {
-        const updated = await updateTask(editingTask._id, payload);
-        setTasks((prev) =>
-          prev.map((t) => (t._id === updated._id ? updated : t))
-        );
-        setEditingTask(null);
-      } else {
-        const created = await createTask(payload);
-        setTasks((prev) => [created, ...prev]);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const byId = useMemo(() => {
+    const m = {};
+    tasks.forEach((t) => (m[t._id] = t));
+    return m;
+  }, [tasks]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this task?")) return;
-    setBusyId(id);
-    setError("");
-    try {
-      await deleteTask(id);
-      setTasks((prev) => prev.filter((t) => t._id !== id));
-      if (editingTask?._id === id) setEditingTask(null);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusyId(null);
-    }
-  };
+  // Tasks in the user's chosen order (drives display + reordering).
+  const orderedTasks = useMemo(
+    () => order.map((id) => byId[id]).filter(Boolean),
+    [order, byId]
+  );
 
-  const handleCycleStatus = async (task) => {
-    const next =
-      STATUS_CYCLE[(STATUS_CYCLE.indexOf(task.status) + 1) % STATUS_CYCLE.length];
-    setBusyId(task._id);
-    setError("");
-    try {
-      const updated = await updateTask(task._id, { ...task, status: next });
-      setTasks((prev) => prev.map((t) => (t._id === updated._id ? updated : t)));
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleEdit = (task) => {
-    setEditingTask(task);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const remaining = tasks.filter((t) => t.status !== "completed").length;
-
-  // Counts per status tab (used by the filter bar).
   const counts = useMemo(
     () => ({
       all: tasks.length,
@@ -110,10 +92,11 @@ export default function App() {
     [tasks]
   );
 
-  // Apply status filter + text search without mutating the source list.
+  const isFiltered = filter !== "all" || search.trim() !== "";
+
   const visibleTasks = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return tasks.filter((t) => {
+    return orderedTasks.filter((t) => {
       const matchesStatus = filter === "all" || t.status === filter;
       const matchesSearch =
         !q ||
@@ -121,15 +104,111 @@ export default function App() {
         (t.description || "").toLowerCase().includes(q);
       return matchesStatus && matchesSearch;
     });
-  }, [tasks, filter, search]);
+  }, [orderedTasks, filter, search]);
+
+  const remaining = tasks.filter((t) => t.status !== "completed").length;
+
+  // ---- CRUD ----
+  const handleSubmit = async (payload) => {
+    setSubmitting(true);
+    setError("");
+    try {
+      if (editingTask) {
+        const updated = await updateTask(editingTask._id, payload);
+        setTasks((prev) => prev.map((t) => (t._id === updated._id ? updated : t)));
+        setEditingTask(null);
+      } else {
+        const created = await createTask(payload);
+        setTasks((prev) => [created, ...prev]);
+        setOrder((prev) => [created._id, ...prev.filter((id) => id !== created._id)]);
+        setEnteringId(created._id);
+        setTimeout(() => setEnteringId(null), 520);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this task? This can't be undone.")) return;
+    setBusyId(id);
+    setError("");
+    try {
+      await deleteTask(id);
+      setLeavingId(id); // play the leave animation, then drop it
+      setTimeout(() => {
+        setTasks((prev) => prev.filter((t) => t._id !== id));
+        setOrder((prev) => prev.filter((x) => x !== id));
+        setLeavingId(null);
+      }, 240);
+      if (editingTask?._id === id) setEditingTask(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // Toggle done via the Ember Check. Optimistic so the animation feels instant;
+  // on success the completed task "files" to the bottom shortly after.
+  const handleToggleComplete = async (task) => {
+    const nextStatus = task.status === "completed" ? "pending" : "completed";
+    const prevSnapshot = task;
+
+    setTasks((prev) =>
+      prev.map((t) => (t._id === task._id ? { ...t, status: nextStatus } : t))
+    );
+
+    try {
+      const updated = await updateTask(task._id, { ...task, status: nextStatus });
+      setTasks((prev) => prev.map((t) => (t._id === updated._id ? updated : t)));
+
+      if (nextStatus === "completed") {
+        clearTimeout(fileTimers.current[task._id]);
+        fileTimers.current[task._id] = setTimeout(() => {
+          setOrder((prev) => [...prev.filter((id) => id !== task._id), task._id]);
+        }, 620);
+      }
+    } catch (err) {
+      setTasks((prev) =>
+        prev.map((t) => (t._id === task._id ? prevSnapshot : t))
+      );
+      setError(err.message);
+    }
+  };
+
+  const handleReorder = (from, to) => {
+    setOrder((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
+  const handleEdit = (task) => {
+    setEditingTask(task);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <div className="app">
       <header className="app-header">
-        <h1>📝 Tasker</h1>
-        <p className="subtitle">
-          {tasks.length} task{tasks.length !== 1 ? "s" : ""} · {remaining} open
-        </p>
+        <div>
+          <div className="wordmark">
+            <h1>
+              Tasker<span className="dot">.</span>
+            </h1>
+          </div>
+          <p className="header-meta">
+            {tasks.length} {tasks.length === 1 ? "task" : "tasks"} · {remaining} open
+          </p>
+        </div>
+        <div className="header-right">
+          <ThemeToggle theme={theme} onToggle={toggle} />
+        </div>
       </header>
 
       <main className="container">
@@ -140,14 +219,7 @@ export default function App() {
           submitting={submitting}
         />
 
-        {error && (
-          <div className="banner banner-error" role="alert">
-            {error}
-            <button className="banner-close" onClick={() => setError("")}>
-              ✕
-            </button>
-          </div>
-        )}
+        {error && <ErrorNotice message={error} onDismiss={() => setError("")} />}
 
         {!loading && tasks.length > 0 && (
           <TaskFilters
@@ -162,17 +234,19 @@ export default function App() {
         <TaskList
           tasks={visibleTasks}
           loading={loading}
-          isFiltered={filter !== "all" || search.trim() !== ""}
+          isFiltered={isFiltered}
+          enteringId={enteringId}
+          leavingId={leavingId}
+          busyId={busyId}
+          reorderable={!isFiltered}
+          onReorder={handleReorder}
+          onToggleComplete={handleToggleComplete}
           onEdit={handleEdit}
           onDelete={handleDelete}
-          onCycleStatus={handleCycleStatus}
-          busyId={busyId}
         />
       </main>
 
-      <footer className="app-footer">
-        <span>Tasker · MERN Task Tracker</span>
-      </footer>
+      <footer className="app-footer">Tasker · Ink &amp; Ember</footer>
     </div>
   );
 }

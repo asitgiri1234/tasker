@@ -8,9 +8,27 @@ A full-stack Task Tracker web application built with the **MERN** stack (MongoDB
 - ✅ REST API with proper HTTP verbs & status codes
 - ✅ MongoDB integration via Mongoose
 - ✅ Server-side & client-side form validation
-- ✅ Responsive UI (coming in Step 2)
-- ✅ Dynamic updates without page refresh (coming in Step 2)
+- ✅ Responsive UI, custom-designed (light + dark)
+- ✅ Dynamic updates without page refresh
 - ✅ Public deployment (coming in Step 4)
+
+## Design — "Ink & Ember"
+
+The UI is a bespoke design system, not a component-kit template:
+
+- **Palette:** warm paper/graphite neutrals with a single ember accent
+  (`#E8622C` / `#F4743E`), plus considered status hues. First-class light **and**
+  dark themes (follows system, remembers your choice).
+- **Type:** three faces with strict roles — **Fraunces** (display serif) for
+  titles, **Inter** for UI, **JetBrains Mono** for metadata.
+- **Signature — the "Ember Check":** completing a task sweeps an ember arc
+  around the checkbox like a lit fuse, strokes in a checkmark, draws an ink
+  strike across the title, then files the task to the bottom.
+- **Custom components:** no native `<select>` or `<input type=date>` — custom
+  listbox dropdown, popover calendar, theme switch, and completion control.
+- **Micro-interactions:** spring/ease-out motion, drag-to-reorder with an ember
+  insertion indicator (order persisted locally), designed empty/loading/error
+  states. Respects `prefers-reduced-motion` and full keyboard navigation.
 
 ## Tech Stack
 

@@ -5,25 +5,26 @@ const FILTERS = [
   { key: "completed", label: "Completed" },
 ];
 
-/**
- * Search box + status filter tabs (with live counts).
- * Purely presentational — state lives in App.
- */
-export default function TaskFilters({ filter, onFilterChange, search, onSearchChange, counts }) {
+/** Search field + status filter pills with live counts. */
+export default function TaskFilters({
+  filter,
+  onFilterChange,
+  search,
+  onSearchChange,
+  counts,
+}) {
   return (
-    <div className="filters">
-      <div className="search-wrap">
-        <input
-          type="search"
-          className="search-input"
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="🔍 Search tasks…"
-          aria-label="Search tasks"
-        />
-      </div>
+    <div className="toolbar">
+      <input
+        type="search"
+        className="search-input"
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
+        placeholder="Search tasks…"
+        aria-label="Search tasks"
+      />
 
-      <div className="filter-tabs" role="tablist">
+      <div className="filter-tabs" role="tablist" aria-label="Filter by status">
         {FILTERS.map(({ key, label }) => (
           <button
             key={key}

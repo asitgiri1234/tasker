@@ -1,27 +1,35 @@
 import { useEffect, useState } from "react";
+import StatusDropdown from "./StatusDropdown";
+import DatePicker from "./DatePicker";
 
 const EMPTY = { title: "", description: "", status: "pending", dueDate: "" };
 
-/** Convert an ISO date string to the yyyy-mm-dd value <input type=date> needs. */
-const toDateInput = (iso) => (iso ? new Date(iso).toISOString().slice(0, 10) : "");
+/** ISO -> yyyy-mm-dd (local) for the custom date picker. */
+const toDateKey = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
 
 /**
- * Shared form for creating and editing tasks.
- * - When `editingTask` is set, the form is prefilled and acts as an editor.
- * - Client-side validation mirrors the backend rules.
+ * Shared create/edit form built entirely from custom controls
+ * (no native select or date input). Client-side validation mirrors
+ * the backend rules.
  */
 export default function TaskForm({ editingTask, onSubmit, onCancel, submitting }) {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
 
-  // Sync form when switching between create/edit or selecting a different task.
   useEffect(() => {
     if (editingTask) {
       setForm({
         title: editingTask.title || "",
         description: editingTask.description || "",
         status: editingTask.status || "pending",
-        dueDate: toDateInput(editingTask.dueDate),
+        dueDate: toDateKey(editingTask.dueDate),
       });
     } else {
       setForm(EMPTY);
@@ -29,71 +37,63 @@ export default function TaskForm({ editingTask, onSubmit, onCancel, submitting }
     setErrors({});
   }, [editingTask]);
 
+  const set = (name, value) => setForm((prev) => ({ ...prev, [name]: value }));
+
   const validate = () => {
     const next = {};
     const title = form.title.trim();
-    if (!title) next.title = "Title is required";
-    else if (title.length > 120) next.title = "Title cannot exceed 120 characters";
+    if (!title) next.title = "Give the task a title";
+    else if (title.length > 120) next.title = "Keep the title under 120 characters";
     if (form.description.length > 1000)
-      next.description = "Description cannot exceed 1000 characters";
+      next.description = "Description is too long (max 1000)";
     setErrors(next);
     return Object.keys(next).length === 0;
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
-
     onSubmit({
       title: form.title.trim(),
       description: form.description.trim(),
       status: form.status,
       dueDate: form.dueDate || null,
     });
-
-    if (!editingTask) setForm(EMPTY); // clear after creating
+    if (!editingTask) setForm(EMPTY);
   };
 
   return (
-    <form className="task-form" onSubmit={handleSubmit} noValidate>
-      <h2>{editingTask ? "Edit Task" : "Add Task"}</h2>
+    <form className="panel" onSubmit={handleSubmit} noValidate>
+      <h2 className="panel-title">
+        {editingTask ? "Edit task" : "What needs doing?"}
+      </h2>
 
       <div className="field">
-        <label htmlFor="title">Title *</label>
+        <label htmlFor="title">Title</label>
         <input
           id="title"
-          name="title"
           type="text"
           value={form.title}
-          onChange={handleChange}
-          placeholder="e.g. Finish the assignment"
+          onChange={(e) => set("title", e.target.value)}
+          placeholder="Draft the project brief…"
           maxLength={120}
           aria-invalid={!!errors.title}
+          autoComplete="off"
         />
         <div className="field-meta">
-          {errors.title ? (
-            <span className="error-text">{errors.title}</span>
-          ) : (
-            <span />
-          )}
+          {errors.title ? <span className="error-text">{errors.title}</span> : <span />}
           <span className="counter">{form.title.length}/120</span>
         </div>
       </div>
 
       <div className="field">
-        <label htmlFor="description">Description</label>
+        <label htmlFor="description">Notes</label>
         <textarea
           id="description"
-          name="description"
-          rows="3"
+          rows="2"
           value={form.description}
-          onChange={handleChange}
-          placeholder="Optional details…"
+          onChange={(e) => set("description", e.target.value)}
+          placeholder="Optional details, links, context…"
           maxLength={1000}
           aria-invalid={!!errors.description}
         />
@@ -109,34 +109,26 @@ export default function TaskForm({ editingTask, onSubmit, onCancel, submitting }
 
       <div className="field-row">
         <div className="field">
-          <label htmlFor="status">Status</label>
-          <select
+          <span className="label" id="status-label">Status</span>
+          <StatusDropdown
             id="status"
-            name="status"
             value={form.status}
-            onChange={handleChange}
-          >
-            <option value="pending">Pending</option>
-            <option value="in-progress">In Progress</option>
-            <option value="completed">Completed</option>
-          </select>
+            onChange={(v) => set("status", v)}
+          />
         </div>
-
         <div className="field">
-          <label htmlFor="dueDate">Due Date</label>
-          <input
+          <span className="label">Due date</span>
+          <DatePicker
             id="dueDate"
-            name="dueDate"
-            type="date"
             value={form.dueDate}
-            onChange={handleChange}
+            onChange={(v) => set("dueDate", v)}
           />
         </div>
       </div>
 
       <div className="form-actions">
         <button type="submit" className="btn btn-primary" disabled={submitting}>
-          {submitting ? "Saving…" : editingTask ? "Update Task" : "Add Task"}
+          {submitting ? "Saving…" : editingTask ? "Save changes" : "Add task"}
         </button>
         {editingTask && (
           <button
