@@ -48,8 +48,9 @@ The UI is a bespoke design system, not a component-kit template:
 
 ```
 tasker/
-├── vercel.json         # Single-project deploy (static frontend + API function)
+├── vercel.json         # Multi-service deploy (frontend + backend services)
 ├── backend/            # Express REST API + MongoDB
+│   ├── api/[...slug].js # Vercel serverless catch-all (mounts app.js)
 │   ├── app.js          # Express app (routes/middleware, exported; no listener)
 │   ├── config/         # Cached DB connection (serverless-safe)
 │   ├── models/         # Mongoose schemas (User, Task)
@@ -105,21 +106,22 @@ deployed backend URL (see `frontend/.env.example`).
 
 ## Deploying to Vercel
 
-The whole app deploys as **one Vercel project** from this repo. The root
-[`vercel.json`](vercel.json) builds the Vite frontend as static files and the
-Express app as a serverless function, then routes traffic:
+The whole app deploys as **one Vercel project** using Vercel's multi-service
+monorepo support. The root [`vercel.json`](vercel.json) declares two services
+and routes between them:
 
-- `/api/*` → the Express serverless function (`backend/app.js`)
-- everything else → the static frontend (SPA fallback to `index.html`)
+- **`frontend`** (`root: frontend`, framework `vite`) — the static React app
+- **`backend`** (`root: backend`) — the Express API, served by the catch-all
+  serverless function `backend/api/[...slug].js` (which mounts `app.js`)
+- Rewrites: `/api/*` → the `backend` service, everything else → `frontend`
 
-Because both live on the same origin, the frontend just calls `/api/...` — no
+Both services share one origin, so the frontend just calls `/api/...` — no
 `VITE_API_URL` needed.
 
 ### Steps
 
 1. **New Project → import this repo.** Leave the _Root Directory_ as the repo
-   root. The build settings come from `vercel.json`, so you can ignore the
-   framework preset.
+   root; the `services` in `vercel.json` define each part.
 2. **Add environment variables** (Project → Settings → Environment Variables):
    | Key | Value |
    |-----|-------|
